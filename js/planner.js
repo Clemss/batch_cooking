@@ -122,12 +122,34 @@ export function generatePlan(settings, recipes, forced = [], rng = Math.random) 
       chosen.push(rest.splice(idx, 1)[0]);
     }
     if (!chosen.length) throw new Error('Aucune recette ne correspond à ce régime.');
-    const plan = assemble(settings, chosen);
-    const score = plan.schedule.filter(s => s.warn).length * 10 + plan.schedule.filter(s => s.freeze).length;
+    let plan = assemble(settings, chosen);
+    let score = planScore(plan);
+
+    // Réparation : on remplace un plat qui tombe trop tard par un plat qui se garde ou se congèle.
+    const forcedIds = new Set(forcedR.map(r => r.id));
+    for (let fix = 0; fix < 6 && plan.warnings.length; fix++) {
+      const late = plan.schedule.find(s => s.warn && !forcedIds.has(s.recipeId));
+      if (!late) break;
+      const inPlan = new Set(plan.recipes.map(r => r.id));
+      const sturdy = shuffle(pool.filter(r => !inPlan.has(r.id)
+        && (r.freezable || (r.keeps || 3) >= Number(settings.days))), rng);
+      if (!sturdy.length) break;
+      const used = new Set(plan.recipes.filter(r => r.id !== late.recipeId).map(mainOf));
+      const pick = sturdy.find(r => !used.has(mainOf(r))) || sturdy[0];
+      const candidate = assemble(settings, plan.recipes.map(r => (r.id === late.recipeId ? pick : stripPlanFields(r))));
+      const cScore = planScore(candidate);
+      if (cScore >= score) break;
+      plan = candidate; score = cScore;
+    }
+
     if (!best || score < best.score) best = { plan, score };
     if (score === 0) break;
   }
   return best.plan;
+}
+
+function planScore(plan) {
+  return plan.schedule.filter(s => s.warn).length * 10 + plan.schedule.filter(s => s.freeze).length;
 }
 
 /** Remplace une recette du brouillon par une autre compatible. */
@@ -180,7 +202,8 @@ function assemble(settings, chosen) {
   let prev = null;
   for (let i = 0; i < slots.length; i++) {
     const s = slots[i];
-    const slack = r => ((r.keeps || 3) * mealsPerDay - i) - remaining.get(r.id);
+    // Un plat congelable peut attendre (on congèlera ses portions) : il cède la priorité aux autres.
+    const slack = r => (((r.keeps || 3) + (r.freezable ? 4 : 0)) * mealsPerDay - i) - remaining.get(r.id);
     const cands = chosen
       .filter(r => remaining.get(r.id) > 0)
       .sort((a, b) => slack(a) - slack(b) || (a.keeps || 3) - (b.keeps || 3));

@@ -16,7 +16,7 @@ js/
   app.js              ← interface
   planner.js          ← génération des menus, liste de courses (logique pure)
   recipes.js          ← recettes de base (quantités pour 1 portion)
-  recipes-extra.js    ← recettes supplémentaires (103 au total)
+  recipes-extra*.js   ← recettes supplémentaires (205 au total)
   firebase.js         ← initialisation Firebase
   firebase-config.js  ← ⚠️ à remplir
 firestore.rules       ← règles de sécurité à coller dans Firebase

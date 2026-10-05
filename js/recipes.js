@@ -1,4 +1,6 @@
 import { EXTRA_RECIPES } from './recipes-extra.js';
+import { EXTRA2A_RECIPES } from './recipes-extra2a.js';
+import { EXTRA2B_RECIPES } from './recipes-extra2b.js';
 
 // Base de recettes healthy intégrée.
 // Quantités indiquées POUR 1 PORTION. keeps = jours de conservation au frigo.
@@ -260,4 +262,4 @@ const BASE_RECIPES = [
   }),
 ];
 
-export const SEED_RECIPES = [...BASE_RECIPES, ...EXTRA_RECIPES];
+export const SEED_RECIPES = [...BASE_RECIPES, ...EXTRA_RECIPES, ...EXTRA2A_RECIPES, ...EXTRA2B_RECIPES];

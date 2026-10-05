@@ -293,7 +293,7 @@ export const EXTRA_RECIPES = [
     tags: ['poisson', 'sans-gluten'], main: 'saumon', time: 30, kcal: 560, keeps: 2, freezable: false,
     ing: [['pavé de saumon', 120, 'g', 'proteines'], ['lentilles beluga', 60, 'g', 'feculents'], ['poireau', 0.5, '', 'legumes'],
       ['moutarde', 0.5, 'c.à.c', 'placard'], ['citron', 0.25, '', 'legumes']],
-    steps: ['Cuire les lentilles 20 min.', 'Faire fondre le poireau, mélanger aux lentilles avec la moutarde.', 'Cuire le saumon 10 min au four, citron.'],
+    steps: ['Cuire les lentilles 20 min.', 'Faire fondre le poireau, mélanger aux lentilles avec la moutarde.', 'Cuire le saumon 10 min au four à 200 °C, citron.'],
   }),
   R('brandade-colin', 'Brandade légère de colin & salade', {
     tags: ['poisson', 'sans-gluten'], main: 'poisson-blanc', time: 45, kcal: 450, keeps: 3, freezable: true,
