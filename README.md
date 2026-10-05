@@ -15,7 +15,8 @@ css/style.css
 js/
   app.js              ← interface
   planner.js          ← génération des menus, liste de courses (logique pure)
-  recipes.js          ← 32 recettes healthy (quantités pour 1 portion)
+  recipes.js          ← recettes de base (quantités pour 1 portion)
+  recipes-extra.js    ← recettes supplémentaires (103 au total)
   firebase.js         ← initialisation Firebase
   firebase-config.js  ← ⚠️ à remplir
 firestore.rules       ← règles de sécurité à coller dans Firebase
@@ -100,4 +101,4 @@ Mots-familles acceptés : « poisson », « viande », « fromage », « laitage
 - Dans l'appli : onglet **Recettes** → *Ajouter ma recette* (partagée avec le foyer).
   Écris les ingrédients comme sur papier (`500 g poulet`, `2 oignons`, `25 cl lait de coco`) :
   l'appli les convertit et devine le rayon.
-- Dans le code : ajoute une entrée dans `js/recipes.js` (quantités pour **1 portion**).
+- Dans le code : ajoute une entrée dans `js/recipes-extra.js` (quantités pour **1 portion**).

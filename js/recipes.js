@@ -1,3 +1,5 @@
+import { EXTRA_RECIPES } from './recipes-extra.js';
+
 // Base de recettes healthy intégrée.
 // Quantités indiquées POUR 1 PORTION. keeps = jours de conservation au frigo.
 // Format ingrédient : [nom, quantité, unité ('' = pièce), rayon]
@@ -12,7 +14,7 @@ const R = (id, name, o) => {
   };
 };
 
-export const SEED_RECIPES = [
+const BASE_RECIPES = [
   R('poulet-curry-coco', 'Poulet curry-coco, épinards & riz basmati', {
     tags: ['viande', 'sans-gluten'], main: 'poulet', time: 35, kcal: 560, keeps: 4, freezable: true,
     ing: [['blanc de poulet', 130, 'g', 'proteines'], ['lait de coco', 60, 'ml', 'epicerie'], ['oignon', 0.5, '', 'legumes'],
@@ -257,3 +259,5 @@ export const SEED_RECIPES = [
       'Sauter le bok choy 3 min.'],
   }),
 ];
+
+export const SEED_RECIPES = [...BASE_RECIPES, ...EXTRA_RECIPES];
