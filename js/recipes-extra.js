@@ -97,7 +97,7 @@ export const EXTRA_RECIPES = [
     steps: ['Cuire le riz.', 'Saisir le porc émincé.', 'Ajouter carotte, bok choy et gingembre, 4 min.', 'Déglacer à la sauce soja.'],
   }),
   R('porc-lentilles', 'Filet mignon, lentilles vertes & carottes', {
-    tags: ['viande', 'sans-gluten'], main: 'porc', time: 50, kcal: 540, keeps: 4, freezable: true,
+    inDish: ['lentilles vertes'], tags: ['viande', 'sans-gluten'], main: 'porc', time: 50, kcal: 540, keeps: 4, freezable: true,
     ing: [['filet mignon de porc', 120, 'g', 'proteines'], ['lentilles vertes', 60, 'g', 'feculents'], ['carotte', 1, '', 'legumes'],
       ['oignon', 0.5, '', 'legumes'], ['thym', 0.5, 'c.à.c', 'placard'], ['moutarde', 0.5, 'c.à.c', 'placard']],
     steps: ['Faire revenir oignon et carotte, ajouter lentilles, thym et 3 fois leur volume d\'eau ; 25 min.',
@@ -141,7 +141,7 @@ export const EXTRA_RECIPES = [
       'Cuire 30 min à 190 °C.'],
   }),
   R('paella-poulet', 'Paella express au poulet & légumes', {
-    tags: ['viande', 'sans-gluten'], main: 'poulet', time: 40, kcal: 560, keeps: 3, freezable: false,
+    inDish: ['riz basmati'], tags: ['viande', 'sans-gluten'], main: 'poulet', time: 40, kcal: 560, keeps: 3, freezable: false,
     ing: [['haut de cuisse de poulet', 120, 'g', 'proteines'], ['riz basmati', 70, 'g', 'feculents'], ['poivron', 0.5, '', 'legumes'],
       ['petits pois surgelés', 40, 'g', 'surgeles'], ['tomates concassées', 80, 'g', 'epicerie'], ['curcuma', 0.5, 'c.à.c', 'placard'],
       ['paprika', 0.5, 'c.à.c', 'placard'], ['bouillon de volaille (cube)', 0.25, '', 'placard']],
@@ -325,7 +325,7 @@ export const EXTRA_RECIPES = [
       'Cuire le boulgour.', 'Sauce : yaourt + concombre râpé.'],
   }),
   R('curry-lentilles-butternut', 'Curry de lentilles vertes & butternut', {
-    tags: ['vegan', 'sans-gluten'], main: 'legumineuses', time: 45, kcal: 500, keeps: 5, freezable: true,
+    inDish: ['lentilles vertes'], tags: ['vegan', 'sans-gluten'], main: 'legumineuses', time: 45, kcal: 500, keeps: 5, freezable: true,
     ing: [['lentilles vertes', 60, 'g', 'feculents'], ['courge butternut', 150, 'g', 'legumes'], ['lait de coco', 40, 'ml', 'epicerie'],
       ['tomates concassées', 100, 'g', 'epicerie'], ['oignon', 0.5, '', 'legumes'], ['curry en poudre', 1, 'c.à.c', 'placard'], ['riz basmati', 40, 'g', 'feculents']],
     steps: ['Faire revenir oignon et curry.', 'Ajouter lentilles, butternut en dés, tomates, lait de coco et 2 verres d\'eau ; 30 min.', 'Servir avec le riz.'],
@@ -370,7 +370,7 @@ export const EXTRA_RECIPES = [
     steps: ['Rincer les pois cassés.', 'Les cuire 50 min avec légumes et bouillon (400 ml par portion).', 'Mixer. Servir avec le pain.'],
   }),
   R('harira', 'Harira aux pois chiches & lentilles', {
-    tags: ['vegan'], main: 'legumineuses', time: 50, kcal: 430, keeps: 5, freezable: true,
+    inDish: ['lentilles vertes'], tags: ['vegan'], main: 'legumineuses', time: 50, kcal: 430, keeps: 5, freezable: true,
     ing: [['pois chiches cuits', 60, 'g', 'feculents'], ['lentilles vertes', 30, 'g', 'feculents'], ['tomates concassées', 120, 'g', 'epicerie'],
       ['céleri branche', 0.3, '', 'legumes'], ['oignon', 0.5, '', 'legumes'], ['coriandre fraîche', 0.1, 'botte', 'legumes'],
       ['ras el hanout', 1, 'c.à.c', 'placard'], ['petites pâtes', 20, 'g', 'feculents']],
@@ -420,7 +420,7 @@ export const EXTRA_RECIPES = [
     steps: ['Cuire le riz.', 'Sauter ail, gingembre et champignons.', 'Ajouter le tofu en cubes, soja et un peu d\'eau, braiser 8 min.', 'Oignon nouveau au service.'],
   }),
   R('moussaka-lentilles', 'Moussaka végétarienne aux lentilles', {
-    tags: ['vegetarien', 'sans-gluten'], main: 'legumineuses', time: 70, kcal: 450, keeps: 4, freezable: true,
+    inDish: ['lentilles vertes'], tags: ['vegetarien', 'sans-gluten'], main: 'legumineuses', time: 70, kcal: 450, keeps: 4, freezable: true,
     ing: [['aubergine', 0.5, '', 'legumes'], ['lentilles vertes', 50, 'g', 'feculents'], ['tomates concassées', 120, 'g', 'epicerie'],
       ['oignon', 0.5, '', 'legumes'], ['yaourt grec', 50, 'g', 'cremerie'], ['œufs', 0.3, '', 'cremerie'], ['cannelle', 0.25, 'c.à.c', 'placard']],
     steps: ['Rôtir l\'aubergine en tranches 20 min à 200 °C.', 'Cuire lentilles, oignon, tomates et cannelle 25 min.',
@@ -471,7 +471,7 @@ export const EXTRA_RECIPES = [
     steps: ['Préparer la base à l\'avance : poireau, courgette et épinards fondus au cumin.', 'Le jour J : réchauffer, casser les œufs, couvrir 6 min.', 'Émietter la feta.'],
   }),
   R('chili-quinoa-vegan', 'Chili au quinoa, haricots noirs & poivrons', {
-    tags: ['vegan', 'sans-gluten'], main: 'legumineuses', time: 40, kcal: 490, keeps: 5, freezable: true,
+    inDish: ['quinoa'], tags: ['vegan', 'sans-gluten'], main: 'legumineuses', time: 40, kcal: 490, keeps: 5, freezable: true,
     ing: [['quinoa', 40, 'g', 'feculents'], ['haricots noirs cuits', 100, 'g', 'feculents'], ['poivron', 0.5, '', 'legumes'],
       ['tomates concassées', 150, 'g', 'epicerie'], ['oignon', 0.5, '', 'legumes'], ['maïs en conserve', 40, 'g', 'epicerie'],
       ['cumin', 1, 'c.à.c', 'placard'], ['paprika fumé', 0.5, 'c.à.c', 'placard']],

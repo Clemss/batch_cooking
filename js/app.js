@@ -11,7 +11,7 @@ import {
 import { SEED_RECIPES } from './recipes.js';
 import {
   generatePlan, rerollRecipe, buildShoppingList, groupItems, formatQty, itemLine, parseIngredientLine,
-  guessCategory, dislikeMatches, slug, dayLabel, todayISO, MEAL_LABELS, DIETS, TAGS, CAT_LABEL, CATEGORIES,
+  guessCategory, dislikeMatches, buildBatchSession, slug, dayLabel, todayISO, MEAL_LABELS, DIETS, TAGS, CAT_LABEL, CATEGORIES,
 } from './planner.js';
 
 // ====================================================================
@@ -351,6 +351,7 @@ function viewMenu() {
   if (!plan) return emptyState('🍱', 'Aucun menu pour l\'instant', 'Génère ton premier menu de la semaine.', 'plan', 'Planifier');
   const isCurrent = plan.id === state.household.currentPlanId;
   const sorted = [...plan.recipes].sort((a, b) => (b.time || 0) - (a.time || 0));
+  const session = buildBatchSession(plan);
   return `
   ${viewPlanPicker(plan)}
   <section class="card">
@@ -362,9 +363,13 @@ function viewMenu() {
   </section>
   <section class="card">
     <h2>👩‍🍳 Session batch cooking</h2>
-    <p class="muted">Ordre conseillé : lance d'abord les cuissons longues (four, mijotés), prépare les plats rapides pendant ce temps.
-      Les éléments marqués « au moment de servir » (œufs mollets, avocat, sauces) se font le jour J.</p>
-    ${sorted.map((r, i) => viewBatchRecipe(r, i, plan)).join('')}
+    <p class="muted">Tout ce qui est commun à plusieurs recettes se fait une seule fois. Coche au fur et à mesure.</p>
+    ${viewSession(session, plan)}
+  </section>
+  <section class="card">
+    <h2>📋 Les recettes, une par une</h2>
+    <p class="muted">Légumes déjà préparés et féculents déjà cuits : saute ces étapes dans chaque recette.</p>
+    ${sorted.map((r, i) => viewBatchRecipe(r, i, plan, session)).join('')}
   </section>
   <div class="row end"><button class="btn small ghost" data-action="delete-plan" data-id="${plan.id}">🗑️ Supprimer ce menu</button></div>`;
 }
@@ -377,12 +382,75 @@ function viewPlanPicker(plan) {
     </select></label>`;
 }
 
-function viewBatchRecipe(r, i, plan) {
+function sessionDone(planId) {
+  try { return new Set(JSON.parse(localStorage.getItem('mb_session_' + planId) || '[]')); } catch { return new Set(); }
+}
+
+function viewSession(sess, plan) {
+  const done = sessionDone(plan.id);
+  const check = (key, html) => `<label class="item ${done.has(key) ? 'done' : ''}">
+      <input type="checkbox" data-change="session-step" data-plan="${plan.id}" data-key="${esc(key)}" ${done.has(key) ? 'checked' : ''}>
+      <span class="name">${html}</span></label>`;
+  const short = n => esc(n.split(/,| & /)[0]);
+  const totalPortions = plan.recipes.reduce((a, r) => a + r.portions, 0);
+  const frozen = plan.schedule.filter(s => s.freeze);
+  let step = 0;
+  const out = [];
+
+  // 1. Mise en route
+  const start = [];
+  if (sess.oven.length) {
+    const o = sess.oven[0];
+    start.push(check('oven', `Préchauffe le four à <b>${o.temp} °C</b> <small>(${o.recipes.map(short).join(', ')})</small>`));
+    for (const other of sess.oven.slice(1)) {
+      start.push(`<p class="muted small-note">Puis passe à ${other.temp} °C pour : ${other.recipes.map(short).join(', ')}.</p>`);
+    }
+  }
+  if (sess.starches.length) start.push(check('water', `Mets <b>${sess.starches.length > 1 ? 'deux grandes casseroles' : 'une grande casserole'}</b> d'eau à bouillir`));
+  if (start.length) out.push(`<div class="phase"><h3>${++step}. Mise en route</h3>${start.join('')}</div>`);
+
+  // 2. Légumes
+  if (sess.prep.length) {
+    out.push(`<div class="phase"><h3>${++step}. Prépare tous les légumes d'un coup</h3>
+      <p class="muted small-note">Range chaque légume préparé dans un bol, il servira à plusieurs recettes.</p>
+      ${sess.prep.map(x => check('prep:' + x.name + x.unit, `${esc(x.action)} <b>${esc(formatQty(x.qty, x.unit))} ${esc(x.name)}</b>
+        ${x.recipes.length > 1 ? `<span class="chip on tag">🔁 ${x.recipes.length} recettes</span>` : `<small>(${short(x.recipes[0])})</small>`}`)).join('')}
+    </div>`);
+  }
+
+  // 3. Féculents
+  if (sess.starches.length) {
+    out.push(`<div class="phase"><h3>${++step}. Lance les cuissons de base</h3>
+      ${sess.starches.map(x => check('starch:' + x.name, `<b>${esc(formatQty(x.qty, x.unit))} ${esc(x.name)}</b> — ${esc(x.time)} ${esc(x.how)}
+        ${x.shared ? `<br><span class="chip on tag">🔁 une seule cuisson pour ${x.recipes.length} recettes</span> <small>${x.recipes.map(short).join(' + ')}</small>` : `<small>(${short(x.recipes[0])})</small>`}`)).join('')}
+      <p class="muted small-note">Égoutte, étale sur une plaque pour refroidir vite, puis répartis selon les recettes.</p>
+    </div>`);
+  }
+
+  // 4. Recettes
+  out.push(`<div class="phase"><h3>${++step}. Cuisine les recettes pendant ce temps</h3>
+    ${sess.order.map((n, i) => check('recipe:' + n, `${i + 1}. ${esc(n)}`)).join('')}
+    <p class="muted small-note">Dans cet ordre : les plus longues (four, mijotés) d'abord, les plus rapides à la fin. Détails plus bas.</p>
+  </div>`);
+
+  // 5. Stockage
+  out.push(`<div class="phase"><h3>${++step}. Répartis et range</h3>
+    ${check('boxes', `Répartis dans <b>${totalPortions} boîtes</b>, laisse refroidir, puis frigo`)}
+    ${frozen.length ? check('freeze', `Congèle les portions de : ${[...new Set(frozen.map(s => dayLabel(plan.settings.startDate, s.day)))].map(esc).join(', ')}`) : ''}
+    ${sess.fresh.length ? `<p class="muted small-note">À garder entier pour le jour J : ${sess.fresh.map(f => `${esc(formatQty(f.qty, f.unit))} ${esc(f.name)}`).join(', ')}.</p>` : ''}
+  </div>`);
+
+  return out.join('');
+}
+
+function viewBatchRecipe(r, i, plan, session) {
+  const ready = (session?.starches || []).filter(s => s.recipes.includes(r.name)).map(s => s.name);
   const frozenDays = plan.schedule.filter(s => s.recipeId === r.id && s.freeze).map(s => dayLabel(plan.settings.startDate, s.day));
   return `<details class="recipe" ${i === 0 ? 'open' : ''}>
     <summary><span class="dot" style="background:${colorFor(r.id)}"></span><b>${i + 1}. ${esc(r.name)}</b><span class="pill">${r.portions} portions</span></summary>
     <div class="body">
       <div class="recipe-meta">${r.time || '?'} min · se garde ${r.keeps} jours au frigo${r.freezable ? ' · congelable' : ''}</div>
+      ${ready.length ? `<div class="notice info">✅ Déjà cuit à l'étape « cuissons de base » : ${ready.map(esc).join(', ')}.</div>` : ''}
       ${frozenDays.length ? `<div class="notice info">❄️ Congèle les portions de : ${frozenDays.map(esc).join(', ')}. Sors-les du congélateur la veille.</div>` : ''}
       <b>Ingrédients pour ${r.portions} portions</b>
       <ul>${r.ingredients.map(ing => `<li>${esc(formatQty(Math.round(ing.qty * r.portions * 10) / 10, ing.unit))} ${esc(ing.name)}</li>`).join('')}</ul>
@@ -658,6 +726,12 @@ const changes = {
   chip(el) { el.closest('.chip').classList.toggle('on', el.checked); },
   'pick-plan'(el) { state.selectedPlanId = el.value; render(); },
   pantry(el) { state.includePantry = el.checked; },
+  'session-step'(el) {
+    const done = sessionDone(el.dataset.plan);
+    el.checked ? done.add(el.dataset.key) : done.delete(el.dataset.key);
+    el.closest('.item').classList.toggle('done', el.checked);
+    try { localStorage.setItem('mb_session_' + el.dataset.plan, JSON.stringify([...done])); } catch { /* ignore */ }
+  },
   async 'toggle-item'(el) {
     el.closest('.item').classList.toggle('done', el.checked);
     try { await updateDoc(planRef(currentPlan().id), { [`items.${el.dataset.id}.checked`]: el.checked }); }

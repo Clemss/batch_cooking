@@ -87,7 +87,7 @@ const BASE_RECIPES = [
       'Ajouter citron, herbes, huile ; fermer et cuire 18 min à 200 °C.'],
   }),
   R('bolo-lentilles', 'Bolognaise bœuf-lentilles & spaghetti complets', {
-    tags: ['viande'], main: 'boeuf', time: 45, kcal: 600, keeps: 4, freezable: true,
+    inDish: ['lentilles vertes'], tags: ['viande'], main: 'boeuf', time: 45, kcal: 600, keeps: 4, freezable: true,
     ing: [['bœuf haché 5 %', 100, 'g', 'proteines'], ['lentilles vertes', 40, 'g', 'feculents'], ['carotte', 0.5, '', 'legumes'],
       ['céleri branche', 0.5, '', 'legumes'], ['oignon', 0.5, '', 'legumes'], ['coulis de tomate', 150, 'g', 'epicerie'],
       ['spaghetti complets', 80, 'g', 'feculents'], ['herbes de Provence', 0.5, 'c.à.c', 'placard']],
@@ -244,7 +244,7 @@ const BASE_RECIPES = [
       'Remettre le bœuf, ajouter la sauce soja et les nouilles cuites.'],
   }),
   R('lentilles-oeuf', 'Lentilles vertes mijotées aux légumes & œuf mollet', {
-    tags: ['vegetarien', 'sans-gluten'], main: 'legumineuses', time: 40, kcal: 460, keeps: 5, freezable: true,
+    inDish: ['lentilles vertes'], tags: ['vegetarien', 'sans-gluten'], main: 'legumineuses', time: 40, kcal: 460, keeps: 5, freezable: true,
     ing: [['lentilles vertes', 70, 'g', 'feculents'], ['carotte', 1, '', 'legumes'], ['oignon', 0.5, '', 'legumes'],
       ['œufs', 1, '', 'cremerie'], ['moutarde', 0.5, 'c.à.c', 'placard'], ['thym', 0.5, 'c.à.c', 'placard']],
     steps: ['Faire revenir oignon et carotte en dés.', 'Ajouter lentilles, thym et 3 fois leur volume d\'eau ; cuire 25 min.',

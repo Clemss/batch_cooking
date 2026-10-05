@@ -359,3 +359,119 @@ export function todayISO() {
   const z = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
 }
+
+// ---------- session batch cooking mutualisée ----------
+
+// Féculents cuits « à part » (casserole d'eau) : on peut les cuire en une fois pour tout le menu.
+const SIDE_STARCHES = {
+  'riz basmati': { time: '11 min', how: 'à l\'eau bouillante salée' },
+  'riz complet': { time: '25 min', how: 'à l\'eau bouillante salée' },
+  'quinoa': { time: '12 min', how: 'rincé, dans 2 fois son volume d\'eau' },
+  'boulgour': { time: '10 min', how: 'dans 2 fois son volume d\'eau' },
+  'semoule complète': { time: '5 min', how: 'couverte d\'eau bouillante, hors du feu' },
+  'pâtes complètes': { time: '9 min', how: 'à l\'eau bouillante, 1 min de moins que le paquet' },
+  'spaghetti complets': { time: '9 min', how: 'à l\'eau bouillante, 1 min de moins que le paquet' },
+  'nouilles soba': { time: '5 min', how: 'puis rincer à l\'eau froide' },
+  'nouilles de riz': { time: '5 min', how: 'ou trempage selon le paquet, puis rincer' },
+  'lentilles vertes': { time: '25 min', how: 'dans 3 fois leur volume d\'eau, sans sel' },
+  'lentilles beluga': { time: '20 min', how: 'dans 3 fois leur volume d\'eau, sans sel' },
+};
+
+// Ce qui se prépare au moment de manger : pas de découpe à l'avance.
+const SERVE_FRESH = ['avocat', 'salade verte', 'roquette'];
+
+const PREP_ACTIONS = [
+  [['oignon nouveau'], 'Émincer'],
+  [['oignon', 'échalote'], 'Éplucher et émincer'],
+  [['ail'], 'Éplucher et hacher'],
+  [['gingembre'], 'Éplucher et râper'],
+  [['carotte', 'panais', 'navet'], 'Éplucher et couper'],
+  [['patate douce', 'pommes de terre', 'butternut'], 'Éplucher et couper en cubes'],
+  [['poivron'], 'Épépiner et couper en lanières'],
+  [['courgette', 'aubergine', 'concombre'], 'Laver et couper'],
+  [['brocoli', 'chou-fleur'], 'Détailler en fleurettes'],
+  [['poireau', 'champignons', 'céleri'], 'Nettoyer et émincer'],
+  [['épinards', 'bok choy', 'pousses de soja'], 'Laver et essorer'],
+  [['chou rouge'], 'Émincer finement'],
+  [['tomates'], 'Laver et couper'],
+  [['haricots verts', 'pois gourmands'], 'Équeuter'],
+  [['persil', 'coriandre', 'basilic', 'menthe'], 'Laver et ciseler'],
+  [['endives'], 'Retirer la base et le cœur amer'],
+  [['citron'], 'Presser / zester'],
+];
+
+function prepAction(name) {
+  const n = name.toLowerCase();
+  for (const [keys, action] of PREP_ACTIONS) if (keys.some(k => n.includes(k))) return action;
+  return 'Laver et préparer';
+}
+
+const PREP_ORDER = ['Éplucher et émincer', 'Éplucher et hacher', 'Éplucher et râper', 'Éplucher et couper',
+  'Éplucher et couper en cubes', 'Épépiner et couper en lanières', 'Laver et couper', 'Détailler en fleurettes',
+  'Nettoyer et émincer', 'Émincer finement', 'Équeuter', 'Laver et essorer', 'Émincer', 'Laver et ciseler',
+  'Retirer la base et le cœur amer', 'Presser / zester', 'Laver et préparer'];
+
+function roundPiece(q) { return Math.ceil(q * 2 - 1e-9) / 2; }
+
+/**
+ * Regroupe le travail commun à toutes les recettes du menu :
+ * four, cuissons de base partagées, préparation des légumes, ordre des recettes.
+ */
+export function buildBatchSession(plan) {
+  const recipes = plan.recipes || [];
+
+  // 1) Four : regroupé par température
+  const ovenMap = new Map();
+  for (const r of recipes) {
+    const temps = [...new Set((r.steps || []).join(' ').match(/\d{3}(?=\s?°C)/g) || [])];
+    for (const t of temps) {
+      if (!ovenMap.has(t)) ovenMap.set(t, []);
+      ovenMap.get(t).push(r.name);
+    }
+  }
+  const oven = [...ovenMap.entries()]
+    .map(([temp, names]) => ({ temp: Number(temp), recipes: names }))
+    .sort((a, b) => b.temp - a.temp);
+
+  // 2) Cuissons de base partagées
+  const starchMap = new Map();
+  for (const r of recipes) {
+    for (const ing of r.ingredients || []) {
+      const key = ing.name.toLowerCase();
+      const info = SIDE_STARCHES[key];
+      if (!info || (r.inDish || []).includes(ing.name)) continue;
+      const e = starchMap.get(key) || { name: ing.name, unit: ing.unit, qty: 0, ...info, recipes: [] };
+      e.qty += ing.qty * r.portions;
+      e.recipes.push(r.name);
+      starchMap.set(key, e);
+    }
+  }
+  const starches = [...starchMap.values()]
+    .map(s => ({ ...s, qty: Math.ceil(s.qty / 10) * 10, shared: s.recipes.length > 1 }))
+    .sort((a, b) => parseInt(b.time) - parseInt(a.time));
+
+  // 3) Préparation des légumes, tous plats confondus
+  const prepMap = new Map();
+  const fresh = new Map();
+  for (const r of recipes) {
+    for (const ing of r.ingredients || []) {
+      const n = ing.name.toLowerCase();
+      const isVeg = ing.cat === 'legumes' || n.includes('pommes de terre');
+      if (!isVeg) continue;
+      const key = `${n}|${ing.unit}`;
+      const target = SERVE_FRESH.some(f => n.includes(f)) ? fresh : prepMap;
+      const e = target.get(key) || { name: ing.name, unit: ing.unit, qty: 0, action: prepAction(ing.name), recipes: [] };
+      e.qty += ing.qty * r.portions;
+      if (!e.recipes.includes(r.name)) e.recipes.push(r.name);
+      target.set(key, e);
+    }
+  }
+  const fix = e => ({ ...e, qty: (e.unit === 'g' || e.unit === 'ml') ? Math.round(e.qty) : roundPiece(e.qty) });
+  const prep = [...prepMap.values()].map(fix)
+    .sort((a, b) => PREP_ORDER.indexOf(a.action) - PREP_ORDER.indexOf(b.action) || b.recipes.length - a.recipes.length);
+
+  // 4) Ordre des recettes : four et mijotés longs d'abord
+  const order = [...recipes].sort((a, b) => (b.time || 0) - (a.time || 0)).map(r => r.name);
+
+  return { oven, starches, prep, fresh: [...fresh.values()].map(fix), order };
+}
