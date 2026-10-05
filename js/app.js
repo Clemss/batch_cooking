@@ -18,7 +18,7 @@ import {
 // État
 // ====================================================================
 
-const DEFAULT_SETTINGS = { people: 2, days: 5, meals: ['midi', 'soir'], recipeCount: 4, diet: 'tous' };
+const DEFAULT_SETTINGS = { people: 2, days: 5, meals: ['midi', 'soir'], recipeCount: 4, diet: 'tous', freezeAll: false };
 
 const state = {
   ready: false,
@@ -274,6 +274,10 @@ function viewPlan() {
             <label class="chip toggle ${s.meals.includes(k) ? 'on' : ''}"><input type="checkbox" name="meals" value="${k}" ${s.meals.includes(k) ? 'checked' : ''} data-change="meal-chip">${l}</label>`).join('')}
         </div>
       </div>
+      <label class="check-line full" style="margin-top:0">
+        <input type="checkbox" name="freezeAll" value="1" ${s.freezeAll ? 'checked' : ''}>
+        <span>❄️ Je congèle tout : ne proposer que des recettes congelables</span>
+      </label>
       <label class="full">Régime
         <select name="diet" id="p-diet">${DIETS.map(([k, l]) => `<option value="${k}" ${s.diet === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
       </label>
@@ -503,10 +507,10 @@ function viewCourses() {
 function viewRecipes() {
   const q = state.recipeSearch.toLowerCase();
   const list = allRecipes().filter(r =>
-    (state.recipeTag === 'tous' || (state.recipeTag === 'perso' ? r.custom : (r.tags || []).includes(state.recipeTag))) &&
+    (state.recipeTag === 'tous' || (state.recipeTag === 'perso' ? r.custom : state.recipeTag === 'congelable' ? r.freezable : (r.tags || []).includes(state.recipeTag))) &&
     (!q || r.name.toLowerCase().includes(q) || r.ingredients.some(i => i.name.toLowerCase().includes(q))));
-  const tags = ['tous', ...TAGS, 'perso'];
-  const tagLabel = { tous: 'Toutes', vegetarien: 'Végé', vegan: 'Vegan', poisson: 'Poisson', viande: 'Viande', 'sans-gluten': 'Sans gluten', perso: 'Mes recettes' };
+  const tags = ['tous', ...TAGS, 'congelable', 'perso'];
+  const tagLabel = { tous: 'Toutes', vegetarien: 'Végé', vegan: 'Vegan', poisson: 'Poisson', viande: 'Viande', 'sans-gluten': 'Sans gluten', congelable: '❄️ Congelables', perso: 'Mes recettes' };
   return `
   <section class="card">
     <h2>Recettes <span class="muted" style="font-size:1rem">(${list.length})</span></h2>
@@ -523,7 +527,7 @@ function viewRecipeItem(r) {
   const forced = state.forced.has(r.id);
   const bad = dislikeMatches(r, dislikes());
   return `<details class="recipe">
-    <summary><b style="flex:1">${esc(r.name)}</b>${bad.length ? `<span class="chip warn" title="Exclue des menus">🚫 ${esc(bad.join(', '))}</span>` : ''}${r.custom ? '<span class="pill">perso</span>' : ''}</summary>
+    <summary><b style="flex:1">${esc(r.name)}</b>${bad.length ? `<span class="chip warn" title="Exclue des menus">🚫 ${esc(bad.join(', '))}</span>` : ''}${r.freezable ? '<span title="Se congèle bien">❄️</span>' : ''}${r.custom ? '<span class="pill">perso</span>' : ''}</summary>
     <div class="body">
       <div class="recipe-meta">${r.time || '?'} min · ${r.kcal ? r.kcal + ' kcal · ' : ''}se garde ${r.keeps} j${r.freezable ? ' · congelable' : ''} · ${(r.tags || []).join(', ')}</div>
       <b>Pour 1 portion</b>
@@ -765,6 +769,7 @@ const forms = {
       recipeCount: clamp(fd.get('recipeCount'), 1, 10),
       meals,
       diet: fd.get('diet'),
+      freezeAll: fd.get('freezeAll') === '1',
       startDate: fd.get('startDate') || todayISO(),
     };
     saveSettings();

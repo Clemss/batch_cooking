@@ -105,7 +105,8 @@ export function generatePlan(settings, recipes, forced = [], rng = Math.random) 
   const slots = buildSlots(settings);
   if (!slots.length) throw new Error('Choisis au moins un repas par jour.');
 
-  const pool = recipes.filter(r => matchesDiet(r, settings.diet) && !dislikeMatches(r, settings.dislikes).length);
+  const pool = recipes.filter(r => matchesDiet(r, settings.diet) && !dislikeMatches(r, settings.dislikes).length
+    && (!settings.freezeAll || r.freezable));
   if (!pool.length && !forced.length) throw new Error('Aucune recette ne correspond à ce régime et à vos aliments exclus.');
   const n = Math.max(1, Math.min(Number(settings.recipeCount) || 1, slots.length));
   const forcedR = forced.map(id => recipes.find(r => r.id === id)).filter(Boolean).slice(0, n);
@@ -159,7 +160,8 @@ export function rerollRecipe(draft, recipeId, recipes, rng = Math.random) {
   const old = current.find(r => r.id === recipeId);
   const candidates = shuffle(
     recipes.filter(r => !inPlan.has(r.id) && matchesDiet(r, draft.settings.diet)
-      && !dislikeMatches(r, draft.settings.dislikes).length),
+      && !dislikeMatches(r, draft.settings.dislikes).length
+      && (!draft.settings.freezeAll || r.freezable)),
     rng,
   );
   if (!candidates.length) throw new Error('Plus aucune autre recette disponible pour ce régime.');
