@@ -11,7 +11,7 @@ import {
 import { SEED_RECIPES } from './recipes.js';
 import {
   generatePlan, rerollRecipe, buildShoppingList, groupItems, formatQty, itemLine, parseIngredientLine,
-  guessCategory, slug, dayLabel, todayISO, MEAL_LABELS, DIETS, TAGS, CAT_LABEL, CATEGORIES,
+  guessCategory, dislikeMatches, slug, dayLabel, todayISO, MEAL_LABELS, DIETS, TAGS, CAT_LABEL, CATEGORIES,
 } from './planner.js';
 
 // ====================================================================
@@ -56,6 +56,7 @@ const currentPlan = () => {
   const id = state.selectedPlanId || state.household?.currentPlanId;
   return state.plans.find(p => p.id === id) || state.plans[0] || null;
 };
+const dislikes = () => state.household?.dislikes || [];
 const clean = obj => JSON.parse(JSON.stringify(obj)); // retire les undefined (refusés par Firestore)
 
 // ====================================================================
@@ -279,6 +280,13 @@ function viewPlan() {
       ${forced.length ? `<div class="full"><label style="margin-bottom:6px">Recettes imposées</label><div class="chips">
         ${forced.map(r => `<span class="chip on">${esc(r.name)} <button type="button" class="icon-btn" style="padding:0 2px" data-action="unforce" data-id="${esc(r.id)}" aria-label="Retirer">✕</button></span>`).join('')}
       </div></div>` : `<p class="full muted" style="margin:0;font-size:.88rem">Astuce : dans l'onglet Recettes, ⭐ impose une recette dans le prochain menu.</p>`}
+      <div class="full">
+        <label style="margin-bottom:6px">Aliments exclus</label>
+        ${dislikes().length
+          ? `<div class="chips">${dislikes().map(d => `<span class="chip warn">🚫 ${esc(d)}</span>`).join('')}
+              <button type="button" class="chip toggle" data-action="tab" data-tab="foyer">Modifier</button></div>`
+          : `<p class="muted" style="margin:0;font-size:.88rem">Aucun. <button type="button" class="linkish" data-action="tab" data-tab="foyer">Ajouter les aliments que vous n'aimez pas</button></p>`}
+      </div>
       <button class="btn primary full">🪄 Générer le menu</button>
     </form>
   </section>
@@ -445,8 +453,9 @@ function viewRecipes() {
 
 function viewRecipeItem(r) {
   const forced = state.forced.has(r.id);
+  const bad = dislikeMatches(r, dislikes());
   return `<details class="recipe">
-    <summary><b style="flex:1">${esc(r.name)}</b>${r.custom ? '<span class="pill">perso</span>' : ''}</summary>
+    <summary><b style="flex:1">${esc(r.name)}</b>${bad.length ? `<span class="chip warn" title="Exclue des menus">🚫 ${esc(bad.join(', '))}</span>` : ''}${r.custom ? '<span class="pill">perso</span>' : ''}</summary>
     <div class="body">
       <div class="recipe-meta">${r.time || '?'} min · ${r.kcal ? r.kcal + ' kcal · ' : ''}se garde ${r.keeps} j${r.freezable ? ' · congelable' : ''} · ${(r.tags || []).join(', ')}</div>
       <b>Pour 1 portion</b>
@@ -496,6 +505,19 @@ function viewFoyer() {
     </form>
     <h3 style="margin-top:18px">Membres</h3>
     <div class="chips">${(h.members || []).map(m => `<span class="chip ${m === uid() ? 'on' : ''}">👤 ${esc(names[m] || 'Membre')}${m === uid() ? ' (moi)' : ''}</span>`).join('')}</div>
+  </section>
+  <section class="card">
+    <h2>🚫 Aliments qu'on n'aime pas</h2>
+    <p class="muted">Les recettes qui en contiennent ne sortiront plus dans les menus générés. Liste commune à tout le foyer.
+      Tu peux aussi mettre « poisson », « viande », « fromage » ou « fruits de mer ».</p>
+    <div class="chips" style="margin-bottom:10px">
+      ${dislikes().map(d => `<span class="chip warn">${esc(d)} <button class="icon-btn" style="padding:0 2px" data-action="remove-dislike" data-value="${esc(d)}" aria-label="Retirer ${esc(d)}">✕</button></span>`).join('') || '<span class="muted" style="font-size:.9rem">Rien pour l\'instant.</span>'}
+    </div>
+    <form data-form="dislike" class="add-row">
+      <input type="text" name="food" id="dislike-input" placeholder="ex. champignons, coriandre, betterave" autocomplete="off" required>
+      <button class="btn primary" aria-label="Ajouter">＋</button>
+    </form>
+    ${dislikes().length ? `<p class="muted" style="font-size:.85rem;margin-top:8px">${allRecipes().filter(r => dislikeMatches(r, dislikes()).length).length} recette(s) exclue(s) sur ${allRecipes().length}.</p>` : ''}
   </section>
   <section class="card">
     <h2>Inviter quelqu'un</h2>
@@ -623,6 +645,11 @@ const actions = {
     catch (e) { fail(e); }
   },
 
+  async 'remove-dislike'(el) {
+    try { await updateDoc(doc(db, 'households', hid()), { dislikes: arrayRemove(el.dataset.value) }); }
+    catch (e) { fail(e); }
+  },
+
   'copy-code'() { copy(hid(), 'Code copié — envoie-le à ton/ta partenaire.'); },
 };
 
@@ -712,6 +739,17 @@ const forms = {
     } catch (e) { fail(e); }
   },
 
+  async dislike(f) {
+    const foods = String(new FormData(f).get('food') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (!foods.length) return;
+    try {
+      await updateDoc(doc(db, 'households', hid()), { dislikes: arrayUnion(...foods) });
+      f.reset(); $('#dislike-input')?.focus();
+      const n = allRecipes().filter(r => dislikeMatches(r, [...dislikes(), ...foods]).length).length;
+      toast(`${foods.join(', ')} exclu(s) — ${n} recette(s) ne sortiront plus.`);
+    } catch (e) { fail(e); }
+  },
+
   async rename(f) {
     const name = String(new FormData(f).get('name')).trim();
     if (!name) return;
@@ -743,7 +781,7 @@ const forms = {
 
 function doGenerate() {
   try {
-    state.draft = generatePlan(state.settings, allRecipes(), [...state.forced]);
+    state.draft = generatePlan({ ...state.settings, dislikes: dislikes() }, allRecipes(), [...state.forced]);
     render();
     setTimeout(() => document.querySelectorAll('.card')[1]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   } catch (e) { fail(e); }

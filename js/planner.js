@@ -55,6 +55,43 @@ export function matchesDiet(recipe, diet) {
   }
 }
 
+// ---------- aliments non aimés ----------
+
+function norm(s) {
+  return String(s || '').toLowerCase().replace(/œ/g, 'oe').replace(/æ/g, 'ae')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').trim();
+}
+
+// Mots qui désignent une famille plutôt qu'un ingrédient précis.
+const DISLIKE_TAGS = { poisson: 'poisson', poissons: 'poisson', viande: 'viande', viandes: 'viande' };
+const DISLIKE_ALIASES = {
+  'fruits de mer': ['crevette'],
+  'fruit de mer': ['crevette'],
+  porc: ['porc', 'filet mignon', 'jambon', 'lardon'],
+  boeuf: ['boeuf', 'rumsteck', 'steak'],
+  laitage: ['lait', 'yaourt', 'feta', 'parmesan', 'gruyere', 'emmental', 'creme'],
+  laitages: ['lait', 'yaourt', 'feta', 'parmesan', 'gruyere', 'emmental', 'creme'],
+  fromage: ['feta', 'parmesan', 'gruyere', 'emmental', 'mozzarella', 'fromage', 'chevre', 'ricotta'],
+};
+
+/** Renvoie la liste des aliments non aimés présents dans la recette. */
+export function dislikeMatches(recipe, dislikes = []) {
+  const found = [];
+  const names = (recipe.ingredients || []).map(i => norm(i.name));
+  for (const raw of dislikes) {
+    const d = norm(raw);
+    if (!d) continue;
+    if (DISLIKE_TAGS[d] && (recipe.tags || []).includes(DISLIKE_TAGS[d])) { found.push(raw); continue; }
+    const words = DISLIKE_ALIASES[d] || [d.replace(/(s|x)$/, '')];
+    const hit = words.some(w => {
+      const re = new RegExp(`(^|\\s)${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(s|x)?(\\s|$)`);
+      return names.some(n => re.test(n) && !(w === 'lait' && n.startsWith('lait de coco')));
+    });
+    if (hit) found.push(raw);
+  }
+  return found;
+}
+
 function mainOf(r) { return r.main || (r.tags || [])[0] || 'autre'; }
 
 // ---------- génération ----------
@@ -68,7 +105,8 @@ export function generatePlan(settings, recipes, forced = [], rng = Math.random) 
   const slots = buildSlots(settings);
   if (!slots.length) throw new Error('Choisis au moins un repas par jour.');
 
-  const pool = recipes.filter(r => matchesDiet(r, settings.diet));
+  const pool = recipes.filter(r => matchesDiet(r, settings.diet) && !dislikeMatches(r, settings.dislikes).length);
+  if (!pool.length && !forced.length) throw new Error('Aucune recette ne correspond à ce régime et à vos aliments exclus.');
   const n = Math.max(1, Math.min(Number(settings.recipeCount) || 1, slots.length));
   const forcedR = forced.map(id => recipes.find(r => r.id === id)).filter(Boolean).slice(0, n);
 
@@ -98,7 +136,8 @@ export function rerollRecipe(draft, recipeId, recipes, rng = Math.random) {
   const inPlan = new Set(current.map(r => r.id));
   const old = current.find(r => r.id === recipeId);
   const candidates = shuffle(
-    recipes.filter(r => !inPlan.has(r.id) && matchesDiet(r, draft.settings.diet)),
+    recipes.filter(r => !inPlan.has(r.id) && matchesDiet(r, draft.settings.diet)
+      && !dislikeMatches(r, draft.settings.dislikes).length),
     rng,
   );
   if (!candidates.length) throw new Error('Plus aucune autre recette disponible pour ce régime.');

@@ -88,6 +88,13 @@ est visible instantanément sur l'autre téléphone.
 - La liste de courses additionne les ingrédients × portions, regroupe par rayon et
   arrondit à des quantités achetables.
 
+## Aliments exclus
+
+Onglet **Foyer** → *Aliments qu'on n'aime pas* : ajoute un ou plusieurs aliments
+(séparés par des virgules). Les recettes qui en contiennent ne sortent plus dans les menus
+générés (elles restent visibles dans l'onglet Recettes avec un badge 🚫).
+Mots-familles acceptés : « poisson », « viande », « fromage », « laitages », « fruits de mer », « porc », « bœuf ».
+
 ## Ajouter des recettes
 
 - Dans l'appli : onglet **Recettes** → *Ajouter ma recette* (partagée avec le foyer).
